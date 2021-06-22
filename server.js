@@ -1,13 +1,12 @@
 /* ADD this be able to call require as an old version */
 const require = createRequire(import.meta.url);
-import express, { response } from "express";
+import express from "express";
 import bodyParser from "body-parser";
 const app = express();
 import tokenMiddleware from "./middleware/index.js";
 import { createRequire } from "module";
-const jwt = require("jsonwebtoken");
-import databases from "./databases";
-
+import auth from "./controllers/auth.js";
+import insertTest from "./controllers/insertTest.js";
 /* ==Start== // add these script to config environment in node js*/
 const path = require("path");
 const __dirname = path.resolve(path.dirname(""));
@@ -15,62 +14,47 @@ require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 /* ==END== */
 
 /* JWT */
-function generateAccessToken(username) {
-  return jwt.sign(username, process.env.TOKEN_SECRET, { expiresIn: "1800s" });
-}
 
 app.use(bodyParser({ extended: false }));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json({ extended: false }));
 
-/* 
-==EXAMPLE OF USING MIDDLEWARE IN NODE JS
-app.use((req, res, next) => {
-  const token = req.query.token || "createdAt";
-  if (token !== "2233") {
-    res.status(401).json({ error: "cannot go a head" });
-  } else {
-    next();
-  }
-}); */
-
-/* jwt create token */
-
-app.post("/api/auth/login", (req, res) => {
-  const userLogin = databases.user.filter(u => u.email === req.body.email);
-
-  userLogin.length === 0 && errorMessage(res);
-
-  if (userLogin[0].password === req.body.password) {
-    const token = generateAccessToken({ username: req.body.email });
-    return res.json({ data: userLogin[0], token });
-  } else {
-    errorMessage(res);
-  }
-});
-function errorMessage(res) {
-  res
-    .status(401)
-    .json({ error: "Your credential doesn't match, please try again" });
+/* collapse to see command hint */
+function junkCommand() {
+  // ==EXAMPLE OF USING MIDDLEWARE IN NODE JS
+  // app.use((req, res, next) => {
+  //   const token = req.query.token || "createdAt";
+  //   if (token !== "2233") {
+  //     res.status(401).json({ error: "cannot go a head" });
+  //   } else {
+  //     next();
+  //   }
+  // }); */
 }
 
-app.get("/api/auth/profile", tokenMiddleware, (req, res) => {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+/* =======Connect to mysql server================= */
+insertTest.startConnection();
 
-  if (token == null) return res.sendStatus(401);
+app.post("/api/auth/login", (req, res) => auth.loginController(req, res));
 
-  jwt.verify(token, process.env.TOKEN_SECRET, (err, user) => {
-    console.log(err);
-    if (err) return res.sendStatus(403);
-    return res.send({ data: user });
-  });
-});
+app.get("/api/auth/profile", tokenMiddleware, (req, res) =>
+  auth.getProfileController(req, res)
+);
 
-app.get("/api/product", tokenMiddleware, function (req, res) {
-  res.send({ products: databases.product });
-});
+app.post("/api/insert-test", tokenMiddleware, (req, res) =>
+  insertTest.insertUsersController(req, res)
+);
+
+app.get("/api/insert-test", tokenMiddleware, (req, res) =>
+  insertTest.getUsersController(req, res)
+);
+
+app.get("/api/product", tokenMiddleware, (req, res) =>
+  insertTest.getProductLocals(req, res)
+);
 
 app.listen(3030, function () {
-  console.log("server has been running on port 3030 see http://localhost:3030");
+  console.log(
+    "server has been running on port 3030 see http://localhost:3030 \n \t > npm start to run code"
+  );
 });
